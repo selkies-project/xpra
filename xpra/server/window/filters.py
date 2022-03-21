@@ -9,16 +9,18 @@ log = Logger("filters")
 
 
 class WindowPropertyFilter:
-    __slots__ = ("property_name", "value", "recurse")
+    __slots__ = ("property_name", "value", "recurse", 'get_window', 'get_window_value')
     def __init__(self, property_name, value, recurse=False):
         self.property_name = property_name
         self.value = value
         self.recurse = recurse
+        self.get_window = self.__get_window
+        self.get_window_value = self.__get_window_value
 
-    def get_window(self, window):
+    def __get_window(self, window):
         return window
 
-    def get_window_value(self, window):
+    def __get_window_value(self, window):
         return window.get_property(self.property_name)
 
     def matches(self, window):
@@ -27,6 +29,8 @@ class WindowPropertyFilter:
             log("get_window(%s)=%s", window, w)
             v = self.get_window_value(w)
             log("%s.matches(%s) %s(..)=%s", self, w, self.get_window_value, v)
+            if v is None:
+                return False
         except Exception:
             log("%s.matches(%s) %s(..) error:", self, w, self.get_window_value, exc_info=True)
             return False
@@ -41,10 +45,12 @@ class WindowPropertyFilter:
 class WindowPropertyIn(WindowPropertyFilter):
     __slots__ = ()
     def evaluate(self, window_value):
+        if window_value is None:
+            return True
         vtypes = set([type(x) for x in self.value])
         if len(vtypes)==1 and list(vtypes)[0]==str:
             #coerce value to match:
-            window_value = str(window_value)
+            window_value = window_value.decode()
         return window_value in self.value
 
     def __repr__(self):

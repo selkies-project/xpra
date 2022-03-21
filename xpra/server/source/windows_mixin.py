@@ -334,13 +334,16 @@ class WindowsMixin(StubSourceMixin):
             return False
         #we could also allow filtering for system tray windows?
         if self.window_filters and self.send_windows and not window.is_tray():
+            found = False
+            filterslog("can_send_window(%s): window_filters: %s", window, self.window_filters)
             for uuid, window_filter in self.window_filters:
                 filterslog("can_send_window(%s) checking %s for uuid=%s (client uuid=%s)",
                            window, window_filter, uuid, self.uuid)
                 if window_filter.matches(window):
                     v = uuid=="*" or uuid==self.uuid
-                    filterslog("can_send_window(%s)=%s", window, v)
-                    return v
+                    filterslog("can_send_window(%s)=%s, uuid=%s, self.uuid=%s", window, v, uuid, self.uuid)
+                    found = found or v
+            return found
         if self.send_windows and self.system_tray:
             #common case shortcut
             v = True
@@ -348,7 +351,7 @@ class WindowsMixin(StubSourceMixin):
             v = self.system_tray
         else:
             v = self.send_windows
-        filterslog("can_send_window(%s)=%s", window, v)
+        filterslog("can_send_window(%s)=%s, self.uuid=%s", window, v, self.uuid)
         return v
 
 

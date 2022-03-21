@@ -780,6 +780,8 @@ class ServerBase(ServerBaseClass):
         except (AttributeError, ValueError):
             ptype = "xpra"
         self.server_event("connection-lost", source.uuid)
+        # DEBUG: Remove window filters for this source
+        # self.window_filters = [f for f in self.window_filters if f[0] != source.uuid]
         remaining_sources = tuple(self._server_sources.values())
         if self.ui_driver==source.uuid:
             if len(remaining_sources)==1:
@@ -797,6 +799,7 @@ class ServerBase(ServerBaseClass):
         #must run from the UI thread (modifies focus and keys)
         netlog("last_client_exited() exit_with_client=%s", self.exit_with_client)
         self.reset_server_timeout(True)
+        self.reset_window_filters()
         for c in SERVER_BASES:
             if c!=ServerCore:
                 try:
@@ -854,6 +857,45 @@ class ServerBase(ServerBaseClass):
             return " %s" % proto
         return ""
 
+    def _process_filter_by_pid(self, proto, packet):
+        from xpra.server.window import filters
+        log("processing filter-window-by-pid: %s", ",".join(packet[1:]))
+        action, wm_pid, operator, client_uuids = packet[1:]
+        action = action.lower()
+        try:
+            wm_pid = int(wm_pid)
+        except:
+            log("filter-window-by-pid: failed to convert pid to int")
+            return
+        ss = self.get_server_source(proto)
+        log("filter-window-by-pid: wm-pid=%s", str(wm_pid))
+        try:
+            object_name = "x11:window"
+            property_name = "_NET_WM_PID"
+            window_filter = filters.get_window_filter(object_name, property_name, operator, wm_pid)
+            for uuid in client_uuids.split(","):
+                if action == "add":
+                    self.window_filters.append((uuid, window_filter))
+                elif action == "remove":
+                    self.window_filters.remove((uuid, window_filter))
+                else:
+                    log("filter-window-by-pid: invalid action '%s', must be either 'add' or 'remove'", action)
+                    return
+                log("filter-window-by-pid: action=%s, filter=%s", str(action), str((uuid, window_filter)))
+        except Exception as e:
+            log("filter-window-by-pid: failed to add window filter: %s", str(e))
+
+    def _process_reset_window_filters(self, proto, packet):
+        try:
+            ss = self.get_server_source(proto)
+            for wid, ws in ss.window_sources.items():
+                ws.window_filters = []
+                self.reset_window_filters()
+        except Exception as e:
+            log("reset-window-filters: failed to reset filters: %s", str(e))
+            return
+        log("reset-window-filters: window filters reset")
+
     ######################################################################
     # packets:
     def add_packet_handlers(self, defs, main_thread=True):
@@ -878,11 +920,13 @@ class ServerBase(ServerBaseClass):
             }, False)
         #attributes / settings:
         self.add_packet_handlers({
-            "server-settings"   : self._process_server_settings,
-            "set_deflate"       : self._process_set_deflate,
-            "shutdown-server"   : self._process_shutdown_server,
-            "exit-server"       : self._process_exit_server,
-            "info-request"      : self._process_info_request,
+            "server-settings"     : self._process_server_settings,
+            "set_deflate"         : self._process_set_deflate,
+            "shutdown-server"     : self._process_shutdown_server,
+            "exit-server"         : self._process_exit_server,
+            "info-request"        : self._process_info_request,
+            "reset-window-filters": self._process_reset_window_filters,
+            "filter-window-by-pid": self._process_filter_by_pid,
             })
 
     def init_aliases(self):

@@ -145,7 +145,7 @@ class WindowModel(BaseWindowModel):
     _initial_x11_properties = BaseWindowModel._initial_x11_properties + [
                               "WM_HINTS", "WM_NORMAL_HINTS", "_MOTIF_WM_HINTS",
                               "WM_ICON_NAME", "_NET_WM_ICON_NAME", "_NET_WM_ICON",
-                              "_NET_WM_STRUT", "_NET_WM_STRUT_PARTIAL"]
+                              "_NET_WM_STRUT", "_NET_WM_STRUT_PARTIAL", "_NET_WM_PID"]
     _internal_property_names = BaseWindowModel._internal_property_names+["children"]
     _MODELTYPE = "Window"
 

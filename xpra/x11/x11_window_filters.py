@@ -23,16 +23,18 @@ def get_x11_window_value(prop, window):
         log("get_x11_window_value(%s, %s)", prop, window, exc_info=True)
         x11type = None
     if x11type:
+        if isinstance(x11type, bytes):
+            x11type = x11type.decode()
         ptype = get_python_type(x11type)
         #log("%s: %s (%s)", filter_object.property_name, x11type, ptype)
         assert ptype, "type '%s' is not handled!" % x11type
         v = prop_get(window, prop, ptype)
         log("prop_get(%s, %s, %s)=%s", window, prop, ptype, v)
         if v and isinstance(v, str):
-            v = strtobytes(v).replace("\0", "")
+            v = strtobytes(v).replace(b'\0', b'')
     else:
         v = None
-    log("%s=%s (type=%s)", prop, v, x11type)
+    log("%s=%s (x11type=%s, ptype=%s)", prop, v, x11type, type(v))
     return v
 
 def get_window_value(filter_object, gdkwin):
